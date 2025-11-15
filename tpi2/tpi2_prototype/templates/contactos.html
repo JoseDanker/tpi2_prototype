@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <h2 class="h4 mb-3">Agregar nuevo contacto</h2>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form action="/contactos" method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            name="nombre"
+                            placeholder="Ej: Mamá, Vecino Juan, Cuidador"
+                            required
+                        >
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Chat ID de Telegram</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            name="chat_id"
+                            placeholder="Ej: 123456789"
+                            required
+                        >
+                        <div class="form-text">
+                            El chat_id lo obtienes desde <code>getUpdates</code> del bot.
+                        </div>
+                    </div>
+                    <button class="btn btn-primary w-100">Guardar contacto</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mt-4 mt-md-0">
+        <h2 class="h4 mb-3">Contactos registrados</h2>
+        {% if contactos %}
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Chat ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in contactos %}
+                                <tr>
+                                    <td>{{ c.nombre }}</td>
+                                    <td>{{ c.chat_id }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <p>No hay contactos registrados todavía.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
