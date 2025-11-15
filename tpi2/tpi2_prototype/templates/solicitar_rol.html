@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <h2 class="h4 mb-3 text-center">Solicitar cambio de rol</h2>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <p><strong>Usuario:</strong> {{ current_user.username }}</p>
+        <p><strong>Nombre completo:</strong> {{ current_user.nombre }}</p>
+        <p><strong>Rol actual:</strong> {{ current_user.role }}</p>
+
+        <form method="post" action="/solicitar_cambio_rol">
+          <div class="mb-3">
+            <label class="form-label">RUT</label>
+            <input type="text" name="rut" class="form-control"
+                   placeholder="Ej: 12.345.678-9" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Rol que solicitas</label>
+            <select name="rol_solicitado" class="form-select">
+              <option value="contacto">Contacto</option>
+              <option value="user">Usuario</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Datos adicionales</label>
+            <textarea name="detalles" class="form-control" rows="4"
+                      placeholder="Explica por qué solicitas este cambio de rol, información de contacto, etc."></textarea>
+          </div>
+
+          <button class="btn btn-primary w-100">Enviar solicitud</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

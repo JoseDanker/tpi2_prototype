@@ -8,7 +8,7 @@ from flask_login import (
     current_user,
     UserMixin,
 )
-
+from datetime import datetime  # agrega este import arriba
 from werkzeug.security import generate_password_hash, check_password_hash
 import requests
 import os
@@ -44,7 +44,7 @@ class User(UserMixin, db.Model):
     # 👇 NUEVOS CAMPOS
     nombre = db.Column(db.String(120), nullable=False)
     direccion = db.Column(db.String(200), nullable=False)
-    is_admin = db.Column(db.Boolean, default=False)
+    role = db.Column(db.String(20), nullable=False, default="user")
 
     def set_password(self, password_plain):
         self.password_hash = generate_password_hash(password_plain)
@@ -57,16 +57,76 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             return redirect(url_for("login"))
-        if not current_user.is_admin:
+        if current_user.role != "admin":
             return abort(403)  # Prohibido
         return f(*args, **kwargs)
     return decorated_function
+
 
 @app.route("/admin")
 @admin_required
 def admin_panel():
     usuarios = User.query.all()
-    return render_template("admin.html", usuarios=usuarios, title="Admin Panel")
+    solicitudes = RoleRequest.query.order_by(RoleRequest.created_at.desc()).all()
+    return render_template(
+        "admin.html",
+        usuarios=usuarios,
+        solicitudes=solicitudes,
+        title="Admin Panel",
+    )
+
+
+@app.post("/admin/cambiar_rol/<int:user_id>")
+@admin_required
+def cambiar_rol(user_id):
+    user = User.query.get_or_404(user_id)
+    nuevo_rol = request.form.get("role")
+
+    # Validar roles permitidos
+    if nuevo_rol not in ["admin", "user", "contacto"]:
+        flash("Rol inválido.", "danger")
+        return redirect(url_for("admin_panel"))
+
+    # Evitar que el admin se saque su propio rol
+    if user.id == current_user.id and nuevo_rol != "admin":
+        flash("No puedes quitarte el rol de administrador a ti mismo.", "warning")
+        return redirect(url_for("admin_panel"))
+
+    user.role = nuevo_rol
+    db.session.commit()
+
+    flash("Rol actualizado correctamente.", "success")
+    return redirect(url_for("admin_panel"))
+
+@app.post("/admin/solicitudes/<int:req_id>/aprobar")
+@admin_required
+def aprobar_solicitud(req_id):
+    req = RoleRequest.query.get_or_404(req_id)
+    user = User.query.get(req.user_id)
+
+    if user is None:
+        flash("Usuario no encontrado para esta solicitud.", "danger")
+        return redirect(url_for("admin_panel"))
+
+    # cambiar rol del usuario
+    user.role = req.rol_solicitado
+    req.estado = "aprobada"
+    db.session.commit()
+
+    flash(f"Solicitud aprobada. El usuario {user.username} ahora es {user.role}.", "success")
+    return redirect(url_for("admin_panel"))
+
+
+@app.post("/admin/solicitudes/<int:req_id>/rechazar")
+@admin_required
+def rechazar_solicitud(req_id):
+    req = RoleRequest.query.get_or_404(req_id)
+    req.estado = "rechazada"
+    db.session.commit()
+
+    flash("Solicitud rechazada.", "info")
+    return redirect(url_for("admin_panel"))
+
 
 # 📇 MODELO: Contacto que recibe mensajes de ayuda
 class Contacto(db.Model):
@@ -77,6 +137,24 @@ class Contacto(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     user = db.relationship("User", backref="contactos")
 
+class RoleRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+
+    username = db.Column(db.String(80), nullable=False)
+    nombre_completo = db.Column(db.String(120), nullable=False)
+    rut = db.Column(db.String(20), nullable=False)
+    detalles = db.Column(db.Text, nullable=True)
+
+    # rol que quiere tener (ej: "contacto")
+    rol_solicitado = db.Column(db.String(20), nullable=False, default="contacto")
+
+    # estados: pendiente / aprobada / rechazada
+    estado = db.Column(db.String(20), nullable=False, default="pendiente")
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", backref="solicitudes_rol")
 
 # 🧠 Cargar usuario para Flask-Login
 @login_manager.user_loader
@@ -131,24 +209,80 @@ def solicitar_ayuda():
 
     return render_template("enviado.html", title="Solicitud enviada")
 
+@app.route("/solicitar_cambio_rol", methods=["GET", "POST"])
+@login_required
+def solicitar_cambio_rol():
+    if request.method == "POST":
+        rut = request.form["rut"]
+        detalles = request.form.get("detalles", "")
+        rol_solicitado = request.form.get("rol_solicitado", "contacto")
+
+        # Opcional: evitar solicitudes duplicadas pendientes
+        existente = RoleRequest.query.filter_by(
+            user_id=current_user.id, estado="pendiente"
+        ).first()
+        if existente:
+            flash("Ya tienes una solicitud de cambio de rol pendiente.", "warning")
+            return redirect(url_for("solicitar_cambio_rol"))
+
+        req = RoleRequest(
+            user_id=current_user.id,
+            username=current_user.username,
+            nombre_completo=current_user.nombre,
+            rut=rut,
+            detalles=detalles,
+            rol_solicitado=rol_solicitado,
+        )
+        db.session.add(req)
+        db.session.commit()
+
+        flash("Solicitud enviada al administrador.", "success")
+        return redirect(url_for("home"))
+
+    return render_template("solicitar_rol.html", title="Solicitar cambio de rol")
+
 
 @app.route("/contactos", methods=["GET", "POST"])
 @admin_required
 def contactos():
     if request.method == "POST":
-        nombre = request.form["nombre"]
+        user_id = int(request.form["user_id"])
         chat_id = request.form["chat_id"]
 
-        nuevo = Contacto(nombre=nombre, chat_id=chat_id, user_id=current_user.id)
-        db.session.add(nuevo)
-        db.session.commit()
+        user = User.query.get_or_404(user_id)
 
-        flash("Contacto agregado correctamente.", "success")
+        # Solo usuarios con rol contacto
+        if user.role != "contacto":
+            flash("Solo puedes asignar chat a usuarios con rol 'contacto'.", "danger")
+            return redirect(url_for("contactos"))
+
+        # ¿Ya existe un Contacto ligado a este usuario?
+        contacto = Contacto.query.filter_by(user_id=user.id).first()
+
+        if contacto is None:
+            contacto = Contacto(
+                nombre=user.nombre,
+                chat_id=chat_id,
+                user_id=user.id,
+            )
+            db.session.add(contacto)
+        else:
+            contacto.chat_id = chat_id  # actualizar
+
+        db.session.commit()
+        flash("Contacto enlazado/actualizado correctamente.", "success")
         return redirect(url_for("contactos"))
 
+    # Para el GET: mostramos lista de usuarios contacto y contactos existentes
+    usuarios_contacto = User.query.filter_by(role="contacto").all()
     lista = Contacto.query.all()
 
-    return render_template("contactos.html", title="Contactos", contactos=lista)
+    return render_template(
+        "contactos.html",
+        title="Contactos",
+        contactos=lista,
+        usuarios_contacto=usuarios_contacto,
+    )
 
 
 # 📝 Registro de usuario
@@ -214,6 +348,20 @@ def logout():
     flash("Sesión cerrada.", "info")
     return redirect(url_for("home"))
 
+with app.app_context():
+    # Crear admin si no existe
+    admin = User.query.filter_by(role="admin").first()
+    if admin is None:
+        nuevo_admin = User(
+            username="admin",
+            nombre="Administrador",
+            direccion="N/A",
+            role="admin"
+        )
+        nuevo_admin.set_password("admin123")  # cámbialo luego
+        db.session.add(nuevo_admin)
+        db.session.commit()
+        print(">>> Admin creado con usuario: admin / admin123")
 
 if __name__ == "__main__":
     app.run(debug=True)

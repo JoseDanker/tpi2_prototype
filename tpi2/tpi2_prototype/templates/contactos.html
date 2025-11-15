@@ -3,20 +3,20 @@
 {% block content %}
 <div class="row">
     <div class="col-md-6">
-        <h2 class="h4 mb-3">Agregar nuevo contacto</h2>
+        <h2 class="h4 mb-3">Enlazar usuario contacto con Telegram</h2>
         <div class="card shadow-sm">
             <div class="card-body">
                 <form action="/contactos" method="post">
                     <div class="mb-3">
-                        <label class="form-label">Nombre</label>
-                        <input
-                            type="text"
-                            class="form-control"
-                            name="nombre"
-                            placeholder="Ej: Mamá, Vecino Juan, Cuidador"
-                            required
-                        >
+                        <label class="form-label">Usuario con rol "contacto"</label>
+                        <select name="user_id" class="form-select" required>
+                            <option value="">Selecciona un usuario...</option>
+                            {% for u in usuarios_contacto %}
+                                <option value="{{ u.id }}">{{ u.username }} — {{ u.nombre }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label">Chat ID de Telegram</label>
                         <input
@@ -30,7 +30,8 @@
                             El chat_id lo obtienes desde <code>getUpdates</code> del bot.
                         </div>
                     </div>
-                    <button class="btn btn-primary w-100">Guardar contacto</button>
+
+                    <button class="btn btn-primary w-100">Guardar / Actualizar contacto</button>
                 </form>
             </div>
         </div>
@@ -44,6 +45,7 @@
                     <table class="table table-sm align-middle mb-0">
                         <thead>
                             <tr>
+                                <th>Usuario</th>
                                 <th>Nombre</th>
                                 <th>Chat ID</th>
                             </tr>
@@ -51,6 +53,13 @@
                         <tbody>
                             {% for c in contactos %}
                                 <tr>
+                                    <td>
+                                        {% if c.user %}
+                                            {{ c.user.username }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
                                     <td>{{ c.nombre }}</td>
                                     <td>{{ c.chat_id }}</td>
                                 </tr>

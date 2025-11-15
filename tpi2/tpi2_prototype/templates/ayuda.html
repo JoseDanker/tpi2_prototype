@@ -6,18 +6,20 @@
 
     {% if current_user.is_authenticated %}
         <p class="lead mb-4">
-            Al presionar el botón, se enviará una alerta a tus contactos con tu nombre y dirección.
+            Presiona el botón solo si necesitas ayuda inmediata.
         </p>
 
         <form action="/solicitar_ayuda" method="post">
-            <button class="btn btn-danger btn-lg px-5 py-3" style="font-size: 1.5rem;">
-                🚨 Pedir Ayuda Ahora
+            <button class="btn btn-danger px-5 py-4"
+                    style="font-size: 2rem; border-radius: 50px;">
+                🚨 SOS – Pedir Ayuda
             </button>
         </form>
 
     {% else %}
         <p class="text-muted">Debes iniciar sesión para pedir ayuda.</p>
-        <a href="/login" class="btn btn-primary">Iniciar sesión</a>
+        <a href="/login" class="btn btn-primary btn-lg">Iniciar sesión</a>
     {% endif %}
 </div>
+
 {% endblock %}

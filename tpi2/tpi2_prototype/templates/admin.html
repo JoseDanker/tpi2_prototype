@@ -3,25 +3,82 @@
 
 <h1 class="mb-4">Panel de Administración</h1>
 
-<table class="table table-hover">
-    <thead>
+<!-- Tabla de usuarios -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title mb-3">Usuarios registrados</h5>
+    <table class="table table-hover align-middle">
+      <thead>
         <tr>
-            <th>Usuario</th>
-            <th>Nombre</th>
-            <th>Dirección</th>
-            <th>Es Admin</th>
+          <th>Usuario</th>
+          <th>Nombre</th>
+          <th>Dirección</th>
+          <th>Rol</th>
         </tr>
-    </thead>
-    <tbody>
+      </thead>
+      <tbody>
         {% for u in usuarios %}
         <tr>
-            <td>{{ u.username }}</td>
-            <td>{{ u.nombre }}</td>
-            <td>{{ u.direccion }}</td>
-            <td>{{ "Sí" if u.is_admin else "No" }}</td>
+          <td>{{ u.username }}</td>
+          <td>{{ u.nombre }}</td>
+          <td>{{ u.direccion }}</td>
+          <td>{{ u.role }}</td>
         </tr>
         {% endfor %}
-    </tbody>
-</table>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Solicitudes de cambio de rol -->
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title mb-3">Solicitudes de cambio de rol</h5>
+
+    {% if solicitudes %}
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Usuario</th>
+            <th>Nombre</th>
+            <th>RUT</th>
+            <th>Rol solicitado</th>
+            <th>Estado</th>
+            <th>Detalles</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in solicitudes %}
+          <tr>
+            <td>{{ s.created_at.strftime("%d-%m-%Y %H:%M") }}</td>
+            <td>{{ s.username }}</td>
+            <td>{{ s.nombre_completo }}</td>
+            <td>{{ s.rut }}</td>
+            <td>{{ s.rol_solicitado }}</td>
+            <td>{{ s.estado }}</td>
+            <td style="max-width: 250px; white-space: pre-wrap;">{{ s.detalles }}</td>
+            <td>
+              {% if s.estado == "pendiente" %}
+                <form action="/admin/solicitudes/{{ s.id }}/aprobar" method="post" class="d-inline">
+                  <button class="btn btn-success btn-sm mb-1">Aprobar</button>
+                </form>
+                <form action="/admin/solicitudes/{{ s.id }}/rechazar" method="post" class="d-inline">
+                  <button class="btn btn-danger btn-sm mb-1">Rechazar</button>
+                </form>
+              {% else %}
+                <span class="text-muted">Sin acciones</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No hay solicitudes de cambio de rol por ahora.</p>
+    {% endif %}
+  </div>
+</div>
 
 {% endblock %}

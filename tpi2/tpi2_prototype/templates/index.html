@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="text-center">
-    <h1 class="mb-4">Bienvenido a BOB SOS</h1>
-    <p class="lead">
-        Esta aplicación permite enviar solicitudes de ayuda a tus contactos de confianza.
-    </p>
-    <a href="/ayuda" class="btn btn-primary btn-lg mt-3">Enviar Solicitud de Ayuda</a>
+<div class="text-center mt-5">
+    <h1 class="mb-3">Bienvenido a <strong>BOB SOS</strong></h1>
+    <p class="lead">Una aplicación diseñada para ayudarte en emergencias.</p>
+
+    <a href="/ayuda" class="btn btn-danger btn-lg mt-4 px-5 py-3"
+       style="font-size: 1.5rem;">
+        🚨 Pedir Ayuda Ahora
+    </a>
 </div>
+
 {% endblock %}
